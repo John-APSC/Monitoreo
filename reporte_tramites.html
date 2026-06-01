@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte de Seguimiento de Trámites</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --border:   #2a2d3a;
+    --accent:   #4f8ef7;
+    --accent2:  #a78bfa;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --green:    #22c55e;
+    --yellow:   #f59e0b;
+    --red:      #ef4444;
+    --gray:     #6b7280;
+    --entidad:  #4f8ef7;
+    --hoja:     #a78bfa;
+    --reclamante: #34d399;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #1a1d27 0%, #12151f 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .header-left h1 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #fff;
+  }
+  .header-left p { color: var(--muted); font-size: 0.78rem; margin-top: 3px; font-family: 'IBM Plex Mono', monospace; }
+  .header-right { display: flex; gap: 12px; align-items: center; }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex;
+    gap: 16px;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 22px;
+    min-width: 150px;
+    flex: 1;
+  }
+  .stat-card .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat-card .value { font-size: 1.8rem; font-weight: 700; margin-top: 4px; font-family: 'IBM Plex Mono', monospace; }
+  .stat-card.red   .value { color: var(--red); }
+  .stat-card.yellow .value { color: var(--yellow); }
+  .stat-card.green  .value { color: var(--green); }
+  .stat-card.blue   .value { color: var(--accent); }
+
+  /* ── FILTERS ── */
+  .filters {
+    padding: 16px 40px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(79,142,247,0.08);
+  }
+  .search-box {
+    margin-left: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    color: var(--text);
+    font-size: 0.82rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    width: 260px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--muted); }
+
+  .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .filter-row + .filter-row { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; }
+  .usuario-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: .78rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: all .15s;
+  }
+  .usuario-btn:hover, .usuario-btn.active {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(167,139,250,.08);
+  }
+
+  /* ── MAIN ── */
+  .main { padding: 28px 40px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── TRAMITE CARD ── */
+  .tramite-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .tramite-card:hover { border-color: #3a3d4a; }
+  .tramite-card.hidden { display: none; }
+
+  .tramite-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .tramite-header:hover { background: rgba(255,255,255,0.02); }
+
+  .semaforo {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px currentColor;
+  }
+  .semaforo.green  { background: var(--green);  color: var(--green); }
+  .semaforo.yellow { background: var(--yellow); color: var(--yellow); }
+  .semaforo.red    { background: var(--red);    color: var(--red); animation: pulse 1.5s infinite; }
+  .semaforo.gray   { background: var(--gray);   color: var(--gray); }
+
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 6px var(--red); }
+    50%      { box-shadow: 0 0 16px var(--red); }
+  }
+
+  .tramite-nro {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    background: rgba(79,142,247,0.1);
+    padding: 3px 10px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .tramite-desc {
+    flex: 1;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .tramite-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .dias-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 8px;
+  }
+  .dias-badge.green  { background: rgba(34,197,94,0.12);  color: var(--green); }
+  .dias-badge.yellow { background: rgba(245,158,11,0.12); color: var(--yellow); }
+  .dias-badge.red    { background: rgba(239,68,68,0.12);  color: var(--red); }
+  .dias-badge.gray   { background: rgba(107,114,128,0.12);color: var(--gray); }
+
+  .estado-pill {
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .estado-pill.pendiente { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .estado-pill.proceso   { background: rgba(79,142,247,0.15);  color: var(--accent); }
+
+  .chevron { color: var(--muted); font-size: 1rem; transition: transform 0.25s; }
+  .tramite-card.open .chevron { transform: rotate(180deg); }
+
+  /* ── BODY EXPANDIBLE ── */
+  .tramite-body {
+    display: none;
+    padding: 0 24px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .tramite-card.open .tramite-body { display: block; }
+
+  .meta-row {
+    display: flex;
+    gap: 24px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .meta-row span strong { color: var(--text); font-weight: 600; }
+
+  /* ── NOTAS GRID ── */
+  .notas-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .notas-col {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .notas-col-header {
+    padding: 10px 16px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+  }
+  .notas-col.entidad   .notas-col-header { color: var(--entidad);     background: rgba(79,142,247,0.06); }
+  .notas-col.hoja      .notas-col-header { color: var(--hoja);        background: rgba(167,139,250,0.06); }
+  .notas-col.reclamante .notas-col-header { color: var(--reclamante); background: rgba(52,211,153,0.06); }
+
+  .nota-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.78rem;
+  }
+  .nota-item:last-child { border-bottom: none; }
+  .nota-id {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+  }
+  .nota-id.entidad    { color: var(--entidad); }
+  .nota-id.hoja       { color: var(--hoja); }
+  .nota-id.reclamante { color: var(--reclamante); }
+
+  .nota-fecha { color: var(--muted); font-size: 0.7rem; margin-bottom: 6px; }
+  .nota-desc  { color: var(--text); line-height: 1.4; }
+  .nota-conclusion {
+    margin-top: 6px;
+    font-size: 0.68rem;
+    color: var(--green);
+    font-style: italic;
+  }
+  .notas-empty {
+    padding: 20px 16px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-align: center;
+    font-style: italic;
+  }
+
+  /* ── SIN SEGUIMIENTO ── */
+  #seccion-sin-seg {
+    margin: 16px 40px 0;
+    border: 1px solid rgba(239,68,68,.4);
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(239,68,68,.04);
+  }
+  .sin-seg-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .sin-seg-header:hover { background: rgba(239,68,68,.06); }
+  .sin-seg-icon  { font-size: 1rem; color: var(--yellow); }
+  .sin-seg-titulo{ font-weight: 700; font-size: .88rem; color: var(--yellow); }
+  .sin-seg-count {
+    background: rgba(239,68,68,.2);
+    color: var(--red);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .75rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+  .sin-seg-sub   { color: var(--muted); font-size: .75rem; flex: 1; }
+  .sin-seg-chevron{ color: var(--muted); transition: transform .25s; margin-left: auto; }
+  .sin-seg-body  { display: none; border-top: 1px solid rgba(239,68,68,.25); padding: 0 20px 16px; }
+  .sin-seg-tabla { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: .78rem; }
+  .sin-seg-tabla th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .sin-seg-tabla td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+  .sin-seg-tabla tr:last-child td { border-bottom: none; }
+  .sin-seg-tabla tr:hover td { background: rgba(255,255,255,.02); }
+  .sin-seg-nro {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .72rem;
+    color: var(--accent);
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    padding: 28px;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-family: 'IBM Plex Mono', monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 16px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .notas-grid { grid-template-columns: 1fr; }
+    .header, .stats-bar, .filters, .main { padding-left: 16px; padding-right: 16px; }
+    .tramite-meta { flex-direction: column; align-items: flex-end; gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>📋 Seguimiento de Trámites</h1>
+    <p>Generado: 01/06/2026 09:24 · Solo trámites activos (En Proceso / Pendiente)</p>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-card blue">
+    <div class="label">Total activos</div>
+    <div class="value" id="stat-total">0</div>
+  </div>
+  <div class="stat-card red">
+    <div class="label">⚠ Críticos (≥10d)</div>
+    <div class="value" id="stat-red">0</div>
+  </div>
+  <div class="stat-card yellow">
+    <div class="label">⚡ Atención (≥5d)</div>
+    <div class="value" id="stat-yellow">0</div>
+  </div>
+  <div class="stat-card green">
+    <div class="label">✓ Al día (&lt;5d)</div>
+    <div class="value" id="stat-green">0</div>
+  </div>
+</div>
+
+<div class="filters">
+  <div class="filter-row">
+    <span class="filter-label">Estado:</span>
+    <button class="filter-btn active" onclick="filtrar('todos', this)">Todos</button>
+    <button class="filter-btn" onclick="filtrar('red', this)">Críticos</button>
+    <button class="filter-btn" onclick="filtrar('yellow', this)">Atención</button>
+    <button class="filter-btn" onclick="filtrar('green', this)">Al día</button>
+    <button class="filter-btn" onclick="filtrar('Pendiente', this)">Pendiente</button>
+    <button class="filter-btn" onclick="filtrar('En Proceso de evaluación', this)">En Proceso</button>
+    <input class="search-box" type="text" id="buscador" placeholder="🔍  Buscar por Nro. o descripción..." oninput="buscar(this.value)">
+  </div>
+  <div class="filter-row" id="fila-usuarios" style="display:none">
+    <span class="filter-label">Usuario:</span>
+    <button class="usuario-btn active" onclick="filtrarUsuario('todos', this)">Todos</button>
+    <!-- botones de usuario generados por JS -->
+  </div>
+</div>
+
+<div id="seccion-sin-seg" style="display:none">
+  <div class="sin-seg-header" onclick="toggleSinSeg()">
+    <span class="sin-seg-icon">⚠</span>
+    <span class="sin-seg-titulo">Trámites activos sin seguimiento registrado</span>
+    <span class="sin-seg-count" id="sin-seg-count">0</span>
+    <span class="sin-seg-sub">No tienen notas en el Reporte de Seguimientos — revisar carga de datos</span>
+    <span class="sin-seg-chevron" id="sin-seg-chevron">▾</span>
+  </div>
+  <div class="sin-seg-body" id="sin-seg-body">
+    <table class="sin-seg-tabla">
+      <thead>
+        <tr>
+          <th>Nro. Trámite</th>
+          <th>Petitorio / Descripción</th>
+          <th>Estado</th>
+          <th>Remitente</th>
+          <th>Fecha Ingreso</th>
+        </tr>
+      </thead>
+      <tbody id="sin-seg-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="main" id="lista-tramites">
+  <!-- TARJETAS GENERADAS DINÁMICAMENTE -->
+</div>
+
+<div class="footer">
+  APS · Sistema de Correspondencia · Umbrales: amarillo ≥5 días · rojo ≥10 días hábiles
+</div>
+
+<script>
+const TRAMITES   = [{"nro": "219975", "descripcion": "REITERA RECLAMO Y SOLICITUD DE RESPUESTA", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "JAVIER LUIS FLORES ASTURIZAGA", "fecha_ingreso": "26/01/2026", "ultima_fecha": "02/02/2026", "dias_sin_atencion": 85, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-578-2026", "fecha": "02/02/2026", "descripcion": "Reitera instrucción de atención a reclamo del Sr.Javier Luis Flores Asturizaga", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "222298", "descripcion": "PRESENTA NOTA DE RECLAMO POR DEMORA EN ATENCIÓN DE TRÁMITE DE INVALIDEZ - SR. MACEDONIO PEREZ CHOQUETICLLA. ADJ.DOC. FJS.10.", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "MARIA YULIANA CUELLAR RUTH", "fecha_ingreso": "08/02/2026", "ultima_fecha": "11/02/2026", "dias_sin_atencion": 78, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-802-2026", "fecha": "11/02/2026", "descripcion": "iNSTRUYEC A gESTORA ATENDER EL RECLAMO", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "222380", "descripcion": "rECLAMA POR BLOQUEO DE RNTA DIGNIDAD, DEBIDO A RADICATORIA POR MÁS DE 12 MESES EN EL EXTERIOR", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "JOVITA MONTAÑO TORRICO", "fecha_ingreso": "10/02/2026", "ultima_fecha": "12/02/2026", "dias_sin_atencion": 77, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "aAPS-I-DE-UPCC-CE-820-2026", "fecha": "12/02/2026", "descripcion": "nan", "conclusion": "se espera respuesta de gestora"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "222733", "descripcion": "RECLAMO POR RETRASO INDEBIDO Y FALTA DE PRONUNCIAMIENTO EN TRAMITE DE PENSION POR INVALIDEZ", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "NAZARIO MORA COLQUE", "fecha_ingreso": "22/02/2026", "ultima_fecha": "25/02/2026", "dias_sin_atencion": 68, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-1005-2026", "fecha": "25/02/2026", "descripcion": "Reclamo por demora de trámite de Pensión por Invalidez – Caso: Braulio Mora Llavera", "conclusion": "SE SOLICITA INFORME"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "120346", "descripcion": "RECLAMO URGENTE A LA GESTORA PUBLICA DE LA SEGURIDAD SOCIAL DE LARGO PLAZO-REITERACION DE SOLICITUD DE RENTA POR INVALIDEZ POR AGRAVAMIENTO CRITICO DE SALUD", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "MILENKA GLADYS SAN ROMAN ANDRADE DE TICONA", "fecha_ingreso": "23/02/2026", "ultima_fecha": "03/03/2026", "dias_sin_atencion": 64, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-1123-2026", "fecha": "03/03/2026", "descripcion": "Reclamo por demora de trámite de Pensión por Invalidez – Caso: Milenka Gladys Román Andrade de Ticona", "conclusion": "SE SOLICITA NOTA ACLARATIVA A LA GESTORA"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "208638", "descripcion": "reclama demora en emisión de dictamen", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "Eudal X FIDEL BLANCO QUISPE", "fecha_ingreso": "05/01/2026", "ultima_fecha": "03/03/2026", "dias_sin_atencion": 64, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-213-2026", "fecha": "14/01/2026", "descripcion": "Instruye a la Gestora atender reclamo de Apoderado Eudal por 8 casos : Tarqui, Medina, Galvis, Blanco, Suarez, Rene Moreno, Herrera, Puita", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": [{"id": "APS-I-DE-UPCC-CE-1126-2026", "fecha": "03/03/2026", "descripcion": "Cierre de atención de reclamos por Invalidez - 8 casos - Tarqui,Medina,Galvis,Blanco,Suarez,Rene Moreno,Herrera,Puita", "conclusion": "RECLAMO ATENDIDO"}]}}, {"nro": "220986", "descripcion": "rECLAMA POR DEMORA EN TRAMITE DE INVALIDEZ, LUEGO DE HABER PRESENTADO DOCUMENTACIÓN COMPLEMENTARIA SOLICITADA POR GESTORA", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "Eudal x KARIL YVANNA HERRERA VDA DE SARAVIA", "fecha_ingreso": "05/01/2026", "ultima_fecha": "03/03/2026", "dias_sin_atencion": 64, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-213-2026", "fecha": "14/01/2026", "descripcion": "Instruye a la Gestora atender reclamo de Apoderado Eudal por 8 casos : Tarqui, Medina, Galvis, Blanco, Suarez, Rene Moreno, Herrera, Puita", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": [{"id": "APS-I-DE-UPCC-CE-1126-2026", "fecha": "03/03/2026", "descripcion": "Cierre de atención de reclamos por Invalidez - 8 casos - Tarqui,Medina,Galvis,Blanco,Suarez,Rene Moreno,Herrera,Puita", "conclusion": "CIERRE DE ATENCIÓN DE RECLAMO"}]}}, {"nro": "220987", "descripcion": "RECLAMA DEMORA EN EMISIÓN DE DICTAMEN , LUEGO DE HABER PRESENTADO DOCUMENTACIÓN COMPLEMENTARIA SOLICITADA POR LA GESTORA", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "Eudal x GABRIEL RENE MORENO FRIAS", "fecha_ingreso": "05/01/2026", "ultima_fecha": "03/03/2026", "dias_sin_atencion": 64, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-213-2026", "fecha": "14/01/2026", "descripcion": "Instruye a la Gestora atender reclamo de Apoderado Eudal por 8 casos : Tarqui, Medina, Galvis, Blanco, Suarez, Rene Moreno, Herrera, Puita", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": [{"id": "APS-I-DE-UPCC-CE-1126-2026", "fecha": "03/03/2026", "descripcion": "Cierre de atención de reclamos por Invalidez - 8 casos - Tarqui,Medina,Galvis,Blanco,Suarez,Rene Moreno,Herrera,Puita", "conclusion": "SE SOLICITA AL APODERADO PRESENTE DOCUMENTOS COMPLEMENTARIOS REQUERIDOS PARA CONTINUIDAD DEL TRÁMITE"}]}}, {"nro": "220988", "descripcion": "DEMORA EN EMISIÓN DE DICTAMEN PERSISTE LUEGO DE HABER PRESENTADO DOCUMENTACIÓN COMPLEMENTARIA SOLICITADA POR LA GESTORA", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "Eudal x MIGUEL MAURICIO SUAREZ HURTADO", "fecha_ingreso": "05/01/2026", "ultima_fecha": "03/03/2026", "dias_sin_atencion": 64, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-213-2026", "fecha": "14/01/2026", "descripcion": "Instruye a la Gestora atender reclamo de Apoderado Eudal por 8 casos : Tarqui, Medina, Galvis, Blanco, Suarez, Rene Moreno, Herrera, Puita", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": [{"id": "APS-I-DE-UPCC-CE-1126-2026", "fecha": "03/03/2026", "descripcion": "Cierre de atención de reclamos por Invalidez - 8 casos - Tarqui,Medina,Galvis,Blanco,Suarez,Rene Moreno,Herrera,Puita", "conclusion": "RECLAMO ATENDIDO"}]}}, {"nro": "222979", "descripcion": "SOLICITA FUNDAMENTACION DE OBJECION DE INICIO DE TRAMITE DE RETIRO FINAL POR PARTE DE SU APODERADO - GESTORA NO DIO CURSO", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "WILBER CAMPOS BUHEZO", "fecha_ingreso": "03/03/2026", "ultima_fecha": "10/03/2026", "dias_sin_atencion": 59, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-1282-2026", "fecha": "10/03/2026", "descripcion": "Instruye a la Gestora atender el reclamo del Sr Wilber Campos Buhezo", "conclusion": "SE ESPERA RESPUESTA"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "223175", "descripcion": "RECLAMA POR SUSPENSIÓN DE PAGO DE PENSIÓN A SU HIJA POR NO PRESENTACIÓN DE CERTIFICADOS DE ESTUDIO", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "MARIA LUISA FERNANDEZ AGUILAR", "fecha_ingreso": "09/03/2026", "ultima_fecha": "12/03/2026", "dias_sin_atencion": 57, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-1337-2026", "fecha": "12/03/2026", "descripcion": "Instruye a Gestora atender reclamo de la Sra. María Luisa Fernández Aguilar", "conclusion": "SE ESPERA RESPUESTA"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "210825", "descripcion": "DEMORA EN TRAMITE DE JUBILACIÓN", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "FELIX QUISPE KAPA - AP.ORLANDO RENE CONDORI MAMANI", "fecha_ingreso": "12/03/2026", "ultima_fecha": "16/03/2026", "dias_sin_atencion": 55, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-1401-2026", "fecha": "16/03/2026", "descripcion": "Instruye a la gestora atender reclamo del Sr. Apoderado Rene Orlando Condori x Félix Quispe Kapa", "conclusion": "SE ESPERA RESPUESTA"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "223235", "descripcion": "SOLICITA COPIA LEGALIZADA DE INCLUSION COMO DERECHOHABIENTE", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "ANGEL CARRERO HUERTAS", "fecha_ingreso": "10/03/2026", "ultima_fecha": "15/03/2026", "dias_sin_atencion": 55, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-1361-2026", "fecha": "15/03/2026", "descripcion": "Instruye a la Gestora atender el reclamo del sr. Ángel Carrero Huertas", "conclusion": "SE ESPERA RESPUESTA"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "223048", "descripcion": "Reclama 2 periodos no acreditados al Asegurado y comunicación de mora presunta al Ministerio de Gobierno, siendo que se presentaron las planillas de respaldo de pago", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "JOSE ANTONIO MELGAR MELGAR", "fecha_ingreso": "04/03/2026", "ultima_fecha": "22/03/2026", "dias_sin_atencion": 50, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-1258", "fecha": "09/03/2026", "descripcion": "Instruye a Gestora atender el reclamo", "conclusion": "nan"}, {"id": "APS-I-DE-UPCC-CE-1515-2026", "fecha": "22/03/2026", "descripcion": "Otorga ampliación de plazo solicitada por la Gestora CON NOTA GPS..EX/88-2026  HR 10921-2026", "conclusion": "ESPERA DE RESPUESTA GESTORA"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "223975", "descripcion": "RECLAMO POR FALTA DE RESPUESTA A TRES SOLICITUDES DE ACTIVACION ORDEN DE COMPRA DE SERVICIOS", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "WILLIAMS RAUL BARRIENTOS APAZA", "fecha_ingreso": "31/03/2026", "ultima_fecha": "13/04/2026", "dias_sin_atencion": 35, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-1994-2026", "fecha": "13/04/2026", "descripcion": "Reclamo por falta de respuesta a compra de servicios – Caso: Alex García Calahuana", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "224658", "descripcion": "RECLAMO POR DEMORA EN TRAMITE DE PENSION POR INVALIDEZ", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "EDMUNDO JOHNNY VALDEZ MEJIA", "fecha_ingreso": "16/04/2026", "ultima_fecha": "26/04/2026", "dias_sin_atencion": 25, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-2443-2026", "fecha": "26/04/2026", "descripcion": "Reclamo por demora de trámite de Pensión por Invalidez – Caso: Bertha Pari Mamani de Valdez", "conclusion": "Se solicita nota aclarativa"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "222242", "descripcion": "SOLICITUD DE EXPLICACION Y RESARCIMIENTO POR REDUCCION DEL MONTO DE PENSION DE VEJEZ", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "SANDRA  PAEZ CASSON", "fecha_ingreso": "05/02/2026", "ultima_fecha": "28/04/2026", "dias_sin_atencion": 24, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-863-2026", "fecha": "17/02/2026", "descripcion": "Reclamo por reducción del monto de la Pensión por Vejez – Caso: Sandra del Rosario Páez Casson", "conclusion": "Se solicita informe y nota aclarativa a la reclamante"}, {"id": "APS-I-DE-UPCC-CE-1142-2026", "fecha": "03/03/2026", "descripcion": "Reiterativa de atención a nota APS-I-DE-UPCC-CE-863-2026 – Caso: Sandra del Rosario Páez Casson", "conclusion": "1RA REITERATIVA"}, {"id": "APS-I-DE-UPCC-CE-2014-2026", "fecha": "13/04/2026", "descripcion": "Segunda Reiterativa de atención a Nota APS-I-DE-UPCC-CE-863-2026", "conclusion": "SEGUNDA REITERATIVA"}, {"id": "APS-I-DE-UPCC-CE-2530-2026", "fecha": "28/04/2026", "descripcion": "Requerimiento de informe complementario – Caso: Sandra del Rosario Páez Casson", "conclusion": "Se solicita nota aclarativa a la Gestora"}], "Hoja de Ruta": [{"id": "15638", "fecha": "21/04/2026", "descripcion": "Trámite No 222242 Reclamo por reducción del monto de la Pensión por Vejez - Caso Sandra del Rosario Páez Casson", "conclusion": ""}], "Nota Externa al Reclamante": []}}, {"nro": "221639", "descripcion": "PRESENTA NOTA DE RECLAMO POR DEMORA EN TRÁMITE DE RETIRO FINAL, CASO SR. ALBERTO COHELLO CESPEDES. ADJ.DOC.FJS.6.", "estado": "En proceso de evaluación", "usuario": "amollo", "remitente": "MARIA YULIANA CUELLAR RUTH", "fecha_ingreso": "03/05/2026", "ultima_fecha": "07/05/2026", "dias_sin_atencion": 17, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-2787-2026", "fecha": "07/05/2026", "descripcion": "Reclamo presentado por la Sra. Maria Yuliana Cuellar – Caso Alberto Cohello Céspedes.", "conclusion": "SE INSTRUYÓ A LA GESTORA LA ATENCIÓN DEL RECLAMO"}], "Hoja de Ruta": [{"id": "17112", "fecha": "03/05/2026", "descripcion": "PRESENTA NOTA DE RECLAMO POR DEMORA EN TRÁMITE DE RETIRO FINAL, CASO SR. ALBERTO COHELLO CESPEDES. ADJ.DOC.FJS.6.", "conclusion": ""}], "Nota Externa al Reclamante": []}}, {"nro": "224911", "descripcion": "RECLAMO POR LA DEMORA EN EL DICTAMEN DEL TRAMITE DE INVALIDEZ ADJ. DOC.", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "FAVIAN  ROMERO  ANDONAYQUE", "fecha_ingreso": "29/04/2026", "ultima_fecha": "10/05/2026", "dias_sin_atencion": 15, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [], "Hoja de Ruta": [], "Nota Externa al Reclamante": [{"id": "APS-I-DE-UPCC-CE-2806-2026", "fecha": "10/05/2026", "descripcion": "Reclamo por demora de trámite de Pensión por Invalidez – Caso: Favian Romero Andonayque", "conclusion": "Se solicita nota aclarativa a la Gestora"}]}}, {"nro": "222220", "descripcion": "RECLAMO TRAMITE DE SOLICITUD DE JUBILACION-SIN ELABARACION DESDE POR EL MES DE DICIEMBRE", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "ROBERTO JAVIER  SOTELO CRUZ", "fecha_ingreso": "05/02/2026", "ultima_fecha": "12/05/2026", "dias_sin_atencion": 14, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-783-2026", "fecha": "10/02/2026", "descripcion": "Reclamo por demora trámite Jubilación Ley N° 1582/2024 – Caso: Roberto Javier Sotelo Cruz", "conclusion": "SE SOLICITA INFORME A LA GESTORA"}, {"id": "APS-I-DE-UPCC-CE-2886-2026", "fecha": "12/05/2026", "descripcion": "Reiterativa de atención a nota APS-I-DE-UPCC-CE-783-2026 – Caso: Roberto Javier Sotelo Cruz", "conclusion": "NOTA REITERATIVA A LA GESTORA"}], "Hoja de Ruta": [{"id": "18032", "fecha": "10/05/2026", "descripcion": "REITERATIVA DE QUEJA Y DENUNCIA POR INCUMPLIMIENTO DE ACTO ADMINISTRATIVO FIRME Y DILACION INJUSTIFICADA DE TRAMITE DE LA GESTORA", "conclusion": ""}], "Nota Externa al Reclamante": []}}, {"nro": "225043", "descripcion": "RECLAMO SOBRE DEMORA DE TRAMITE DE INVALIDEZ EN LA GESTORA", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "MARTHA GENARA IRUSTA YUPANQUI", "fecha_ingreso": "06/05/2026", "ultima_fecha": "13/05/2026", "dias_sin_atencion": 13, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-2909-2026", "fecha": "13/05/2026", "descripcion": "Reclamo por demora de trámite de Pensión por Invalidez – Caso: Martha Genera Irusta Yupanqui", "conclusion": "SE SOLICITA NOTA ACLARATIVA A LA GESTORA"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "225085", "descripcion": "RECLAMO POR DEMORA INJUSTIFICADA EN TRAMITE DE TRAMITE DE AJUSTE DE LA LEY 1584/2024 CASO RAUL GUARACHI MENDOZA", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "RUBI ESMERALDA TICONA QUISBERTH", "fecha_ingreso": "07/05/2026", "ultima_fecha": "13/05/2026", "dias_sin_atencion": 13, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-2919-2026", "fecha": "13/05/2026", "descripcion": "Reclamo por no pago de retroactivo trámite de ajuste Ley N° 1582 – Caso: Raul Guarachi Mendoza", "conclusion": "Se solicita nota aclaratoria a la Gestora"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "225312", "descripcion": "DEMORA TRAMITE DE INVALIDEZ", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "FELIX MAYTA TOLA", "fecha_ingreso": "13/05/2026", "ultima_fecha": "13/05/2026", "dias_sin_atencion": 13, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-3077-2026", "fecha": "13/05/2026", "descripcion": "Instruye a la Gestora atender reclamo del Sr. Félix Mayta Tola", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "225024", "descripcion": "RECLAMO POR PENSION DE INVALIDEZ", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "SEIKO MAGALI MEJIA LUJAN", "fecha_ingreso": "06/05/2026", "ultima_fecha": "17/05/2026", "dias_sin_atencion": 10, "semaforo": "red", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-2946-2026", "fecha": "17/05/2026", "descripcion": "Reclamo por demora en el trámite de Pensión de Invalidez – Caso: Seiko Magali Mejia Lujan", "conclusion": "Se instruye a la Gestora atender el reclamo en el marco de sus competencias y normativa legal aplicable."}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "225241", "descripcion": "DENSIDAD DE APORTES REAL EN SU Eap PARA CALCULO DE PENSIÓN", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "RAUL APAZA", "fecha_ingreso": "12/05/2026", "ultima_fecha": "19/05/2026", "dias_sin_atencion": 9, "semaforo": "yellow", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-3033-2026", "fecha": "19/05/2026", "descripcion": "Instruye a la Gestora atención de reclamo del Sr. Raúl Apaza Pacasi", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "225278", "descripcion": "DEMORA TRAMITE DE INVALIDEZ", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "PAMELA ANDREA RUFFO VALLEJOS", "fecha_ingreso": "13/05/2026", "ultima_fecha": "20/05/2026", "dias_sin_atencion": 8, "semaforo": "yellow", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-3081-2026", "fecha": "20/05/2026", "descripcion": "Instruye a la Gestora atender reclamo de la Sra. Pamela Andrea Ruffo Vallejos", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "225383", "descripcion": "DEMORA TRAMITE INVALIDEZ", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "ROSSEXABER RIVAS MAMANI", "fecha_ingreso": "14/05/2026", "ultima_fecha": "20/05/2026", "dias_sin_atencion": 8, "semaforo": "yellow", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-3070-2026", "fecha": "20/05/2026", "descripcion": "Instruye a la Gestora atender reclamo de Sr. Rossexaber Rivas Mamani", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "225279", "descripcion": "BLOQUEO DE PAGO RENTA DIGNIDAD", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "RAUL VILLCA", "fecha_ingreso": "13/05/2026", "ultima_fecha": "21/05/2026", "dias_sin_atencion": 7, "semaforo": "yellow", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-3106-2026", "fecha": "21/05/2026", "descripcion": "Instruye a la Gestora atender reclamo de la Sra. Exaltación Jove Sevillanos", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "225505", "descripcion": "JUBILACION SOLO COMPENSACION DE COTIZACIONES", "estado": "En proceso de evaluación", "usuario": "nzapata", "remitente": "FELIX AYALA SILVA", "fecha_ingreso": "19/05/2026", "ultima_fecha": "25/05/2026", "dias_sin_atencion": 5, "semaforo": "yellow", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-3182-2026", "fecha": "25/05/2026", "descripcion": "Instruye va la Gestora atender reclamo del Sr. Félix Ayala Silva", "conclusion": "nan"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "225525", "descripcion": "RECLAMO SOBRE DEMORA DE TRAMITE DE INVALIDEZ EN LA GESTORA", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "NANCY  MAMANI LUNA", "fecha_ingreso": "19/05/2026", "ultima_fecha": "25/05/2026", "dias_sin_atencion": 5, "semaforo": "yellow", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-3161-2026", "fecha": "25/05/2026", "descripcion": "Reclamo por demora en el trámite de Pensión por Invalidez – Caso: Nancy Mamani Luna", "conclusion": "Se instruye a la Gestora atender el reclamo en el marco de sus competencias y normativa legal aplicable"}], "Hoja de Ruta": [], "Nota Externa al Reclamante": []}}, {"nro": "222403", "descripcion": "QUEJA Y SOLICITUD DE DEVOLUCION DE DINERO GASTADO POR NEGLIGENCIA DEL FUNCIONARIO DE LA GESTORA, JORGE MAURICIO GUTIERREZ SANDY", "estado": "En proceso de evaluación", "usuario": "ecastillo", "remitente": "ANGELICA MARIA VARGAS DELGADO", "fecha_ingreso": "10/02/2026", "ultima_fecha": "27/05/2026", "dias_sin_atencion": 3, "semaforo": "green", "notas": {"Nota Externa a la Entidad": [{"id": "APS-I-DE-UPCC-CE-905-2026", "fecha": "18/02/2026", "descripcion": "Reclamo por negligencia de atención por funcionario de la Gestora – Caso: Eduardo Gerardo Guillen Delgado CUA: 35941406", "conclusion": "Se solicita informe a la Gestora y remisión de nota aclarativa a la reclamante"}, {"id": "APS-I-DE-UPCC-CE-2010-2026", "fecha": "13/04/2026", "descripcion": "Reiterativa de atención a nota APS-I-DE-UPCC-CE-905-2026 – Caso: Eduardo Gerardo Guillen Delgado", "conclusion": "1ra reiterativa"}, {"id": "APS-I-DE-UPCC-CE-2519-2026", "fecha": "28/04/2026", "descripcion": "Requerimiento de informe complementario – Caso: Eduardo Gerardo Guillén Delgado CUA: 35941406", "conclusion": "SE SOLICITA INFORME COMPLEMENTARIO"}, {"id": "APS-I-DE-UPCC-CE-3283-2026", "fecha": "27/05/2026", "descripcion": "Requerimiento de informe complementario (Poder de Cobro) – Caso: Eduardo Gerardo Guillén Delgado CUA: 35941406", "conclusion": "SE SOLICITA INFORME COMPLEMENTARIO (TERCER) A LA GESTORA"}], "Hoja de Ruta": [{"id": "15473", "fecha": "20/04/2026", "descripcion": "Trámite N 222403 Respuesta a nota APS-I-DE-UPCC-CE-905-2026", "conclusion": ""}, {"id": "15636", "fecha": "21/04/2026", "descripcion": "Trámite N 222403 Respuesta a nota APS-I-DE-UPCC-CE-905-2026", "conclusion": ""}, {"id": "18023", "fecha": "10/05/2026", "descripcion": "RECLAMO DE NOTA ENVIADA EL 11 DE FEBRERO POR DEVOLUCION DE GASTOS", "conclusion": ""}, {"id": "19143", "fecha": "14/05/2026", "descripcion": "Trámite N 222403 Respuesta a nota APS-I-DE-UPCC-CE-2519-2026", "conclusion": ""}, {"id": "19143", "fecha": "14/05/2026", "descripcion": "Trámite N 222403 Respuesta a nota APS-I-DE-UPCC-CE-2519-2026", "conclusion": ""}], "Nota Externa al Reclamante": []}}];
+const SIN_SEG    = [{"nro": "225185", "descripcion": "DEMORA TRAMITE DE INVALIDEZ", "estado": "En proceso de evaluación", "remitente": "JHIMMY WALTER VILLCA MANTILLA", "fecha_ingreso": "11/05/2026"}, {"nro": "216820", "descripcion": "DEMORATRAMITE INVALIDEZ", "estado": "En proceso de evaluación", "remitente": "FERNANDO BOHORQUEZ UGARTE", "fecha_ingreso": "19/05/2026"}, {"nro": "225581", "descripcion": "DEMORA EN TRAMITE DE INVALIDEZ", "estado": "En proceso de evaluación", "remitente": "CECILIA ANABEL CASTELO HERRERA DE PEREZ", "fecha_ingreso": "21/05/2026"}, {"nro": "225590", "descripcion": "DEMORA DICTAMEN", "estado": "En proceso de evaluación", "remitente": "SHIRLEY GEANETT NISTTAHUZ SANTALLA", "fecha_ingreso": "24/05/2026"}, {"nro": "225096", "descripcion": "RECLAMO SOBBRE DEMORA DE INVALIDEZ EN LA GESTORA PUBLICA DE LA SEGURIDAD SOCIAL DE LARGO PLAZO", "estado": "En proceso de evaluación", "remitente": "NARDA YOMAR SEJAS PEREZ PATON", "fecha_ingreso": "10/05/2026"}, {"nro": "225103", "descripcion": "RECLAMO SOBRE DEMORA DE TRAMITE DE INVALIDEZ EN LA GESTORA", "estado": "En proceso de evaluación", "remitente": "ROSA MARIA REJAS DAZA", "fecha_ingreso": "10/05/2026"}, {"nro": "225041", "descripcion": "RECLAMO POR DEMORA DE TRAMITE DE INVALIDEZ EN LA GESTORA", "estado": "En proceso de evaluación", "remitente": "JORGE OSCAR ORTA ROMERO", "fecha_ingreso": "06/05/2026"}, {"nro": "225042", "descripcion": "RECLAMO SOBRE INICIO DE TRAMITE EN LA GESTORA", "estado": "En proceso de evaluación", "remitente": "MIGUEL ANGEL BLACUT MERCADO", "fecha_ingreso": "06/05/2026"}, {"nro": "225083", "descripcion": "HAGO CONOCER IMPAGO DE RENTA DE JUBILACION POR PARTE DE LA GESTORA", "estado": "En proceso de evaluación", "remitente": "MARITZA CELIA TORREZ ARISMENDI", "fecha_ingreso": "07/05/2026"}, {"nro": "224909", "descripcion": "APODERADO - PRESENTA NOTA DE RECLAMO POR DEMORA EN EL DICTAMEN, AFILIADA: ESMERARDA GUZMAN VARGAS. ADJ.DOC.", "estado": "En proceso de evaluación", "remitente": "FRANCO MARCO LOPEZ SALAS", "fecha_ingreso": "29/04/2026"}, {"nro": "225040", "descripcion": "RECLAMO SOBRE INICIO DE TRAMITE EN LA GESTORA PUBLICA DE LA SEGURIDAD SOCIAL DE LARGO PLAZO", "estado": "En proceso de evaluación", "remitente": "CARLOS MARIN PEÑARANDA", "fecha_ingreso": "06/05/2026"}, {"nro": "224683", "descripcion": "DEMORA TRAMITE DE INVALIDEZ (PODER)", "estado": "En proceso de evaluación", "remitente": "Juan Alvarado x FIDEL JUSTINIANO MERCADO", "fecha_ingreso": "19/04/2026"}, {"nro": "224681", "descripcion": "DEMORA TRÁMITE DE INVALIDEZ (PODER)", "estado": "En proceso de evaluación", "remitente": "Juan Alvarado x BERNARDO MARCELO URQUIDI IÑIGUEZ", "fecha_ingreso": "19/04/2026"}, {"nro": "224680", "descripcion": "DEMORA TRAMITE DE INVALIDEZ (PODER)", "estado": "En proceso de evaluación", "remitente": "Juan Alvarado x VICTOR FERNANDO CORNEJO RADA", "fecha_ingreso": "19/04/2026"}, {"nro": "223595", "descripcion": "RECHAZARON REPRESENTACION DE SU APODERADO PARA REALIZAR TRAMITE DE RETIRO MINIMO/RETIRO FINAL", "estado": "En proceso de evaluación", "remitente": "MARCO ANTONIO MENDIVIL CABALLERO", "fecha_ingreso": "18/03/2026"}, {"nro": "223704", "descripcion": "demora en tramite de invalidez", "estado": "En proceso de evaluación", "remitente": "harold ramiro reyes torrez", "fecha_ingreso": "23/03/2026"}, {"nro": "223757", "descripcion": "SOLICITA RECALCULO DE SU PENSIÓN DE JUBILACION (MILITAR) , NO CONSIDERARON 35 AÑOS DE SERVICIO", "estado": "En proceso de evaluación", "remitente": "JORGE EDUARDO ANTEZANA RUIZ", "fecha_ingreso": "25/03/2026"}, {"nro": "223175", "descripcion": "SUSPENSION DE PAGO DE PENSION POR MUEERTE A SU HIJA, POR NO PRESENTAR CERTIFICADOS DE ESTUDIO", "estado": "En proceso de evaluación", "remitente": "MARIA LUISA FERNANDEZ AGUILAR", "fecha_ingreso": "31/03/2026"}, {"nro": "223699", "descripcion": "aportes en mora red PAT 2005, 2006 2008 2009 y 2010", "estado": "En proceso de evaluación", "remitente": "macario renato cadena", "fecha_ingreso": "23/03/2026"}, {"nro": "223600", "descripcion": "RECLAMO POR DEMORA INJUSTIFICADA EN GESTORA PUBLICA DE PENSIONES DOCUMENTACION GESTION 2015", "estado": "En proceso de evaluación", "remitente": "NESTOR FREDDY ARMIJO SUBIETA", "fecha_ingreso": "18/03/2026"}, {"nro": "222916", "descripcion": "DENUNCIA INCUMPLIMIENTO DE PLAZOS Y VULNERACION DE DERECHOS CONSTITUCIONALES DE PACIENTE ONCOLIGICO", "estado": "En proceso de evaluación", "remitente": "MARITZA  MONTOYA GALLARDO DE OÑA", "fecha_ingreso": "01/03/2026"}];
+
+// ── SECCIÓN SIN SEGUIMIENTO ──
+if (SIN_SEG.length > 0) {
+  document.getElementById('seccion-sin-seg').style.display = 'block';
+  document.getElementById('sin-seg-count').textContent = SIN_SEG.length;
+  const tbody = document.getElementById('sin-seg-tbody');
+  tbody.innerHTML = SIN_SEG.map(t => `
+    <tr>
+      <td><span class="sin-seg-nro">${t.nro}</span></td>
+      <td>${t.descripcion}</td>
+      <td>${t.estado}</td>
+      <td>${t.remitente || '—'}</td>
+      <td>${t.fecha_ingreso || '—'}</td>
+    </tr>`).join('');
+}
+
+function toggleSinSeg() {
+  const body    = document.getElementById('sin-seg-body');
+  const chevron = document.getElementById('sin-seg-chevron');
+  const open    = body.style.display === 'block';
+  body.style.display    = open ? 'none' : 'block';
+  chevron.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+// ── TRAMITES PRINCIPALES ──
+function renderTarjeta(t) {
+  const diasLabel = t.dias_sin_atencion !== null
+    ? `${t.dias_sin_atencion} día${t.dias_sin_atencion !== 1 ? 's' : ''}`
+    : 'Sin fechas';
+
+  const estadoClass = t.estado === 'Pendiente' ? 'pendiente' : 'proceso';
+
+  const renderNotas = (lista, tipo) => {
+    if (!lista.length) return `<div class="notas-empty">Sin notas</div>`;
+    return lista.map(n => `
+      <div class="nota-item">
+        <div class="nota-id ${tipo}">${n.id || '—'}</div>
+        <div class="nota-fecha">📅 ${n.fecha}</div>
+        <div class="nota-desc">${n.descripcion || '—'}</div>
+        ${n.conclusion ? `<div class="nota-conclusion">✓ ${n.conclusion}</div>` : ''}
+      </div>`).join('');
+  };
+
+  return `
+  <div class="tramite-card" data-semaforo="${t.semaforo}" data-estado="${t.estado}" data-usuario="${(t.usuario||'').toLowerCase()}" data-search="${t.nro} ${t.descripcion}".toLowerCase()>
+    <div class="tramite-header" onclick="toggleCard(this)">
+      <div class="semaforo ${t.semaforo}"></div>
+      <div class="tramite-nro">${t.nro}</div>
+      <div class="tramite-desc">${t.descripcion}</div>
+      <div class="tramite-meta">
+        <span class="dias-badge ${t.semaforo}">${diasLabel}</span>
+        <span class="estado-pill ${estadoClass}">${t.estado}</span>
+        <span class="chevron">▾</span>
+      </div>
+    </div>
+    <div class="tramite-body">
+      <div class="meta-row">
+        <span><strong>Usuario:</strong> ${t.usuario || '—'}</span>
+        <span><strong>Remitente:</strong> ${t.remitente || '—'}</span>
+        <span><strong>Ingreso:</strong> ${t.fecha_ingreso || '—'}</span>
+        <span><strong>Última nota:</strong> ${t.ultima_fecha}</span>
+        <span><strong>Días hábiles sin atención:</strong> ${t.dias_sin_atencion !== null ? t.dias_sin_atencion : '—'}</span>
+      </div>
+      <div class="notas-grid">
+        <div class="notas-col entidad">
+          <div class="notas-col-header">↗ Nota Externa · Entidad</div>
+          ${renderNotas(t.notas['Nota Externa a la Entidad'], 'entidad')}
+        </div>
+        <div class="notas-col hoja">
+          <div class="notas-col-header">📄 Hoja de Ruta</div>
+          ${renderNotas(t.notas['Hoja de Ruta'], 'hoja')}
+        </div>
+        <div class="notas-col reclamante">
+          <div class="notas-col-header">↙ Nota Externa · Reclamante</div>
+          ${renderNotas(t.notas['Nota Externa al Reclamante'], 'reclamante')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCard(header) {
+  header.parentElement.classList.toggle('open');
+}
+
+// ── FILTROS DE USUARIO (generación dinámica) ──
+const usuarios = [...new Set(TRAMITES.map(t => t.usuario).filter(Boolean))].sort();
+if (usuarios.length > 0) {
+  const filaUsuarios = document.getElementById('fila-usuarios');
+  filaUsuarios.style.display = 'flex';
+  usuarios.forEach(u => {
+    const btn = document.createElement('button');
+    btn.className = 'usuario-btn';
+    btn.textContent = u;
+    btn.onclick = () => filtrarUsuario(u.toLowerCase(), btn);
+    filaUsuarios.appendChild(btn);
+  });
+}
+
+let filtroActual  = 'todos';
+let usuarioActual = 'todos';
+let busquedaActual = '';
+
+function actualizarVista() {
+  let total=0, rojo=0, amarillo=0, verde=0;
+
+  // Contar sobre el total sin filtrar para los stats
+  TRAMITES.forEach(t => {
+    if(t.semaforo==='red')         rojo++;
+    else if(t.semaforo==='yellow') amarillo++;
+    else if(t.semaforo==='green')  verde++;
+    total++;
+  });
+  document.getElementById('stat-total').textContent  = total;
+  document.getElementById('stat-red').textContent    = rojo;
+  document.getElementById('stat-yellow').textContent = amarillo;
+  document.getElementById('stat-green').textContent  = verde;
+
+  document.querySelectorAll('.tramite-card').forEach(card => {
+    const sem     = card.dataset.semaforo;
+    const estado  = card.dataset.estado;
+    const usuario = (card.dataset.usuario || '').toLowerCase();
+    const search  = (card.dataset.search  || '').toLowerCase();
+    const q       = busquedaActual.toLowerCase();
+
+    const pasaEstado   = filtroActual === 'todos' || filtroActual === sem || filtroActual === estado;
+    const pasaUsuario  = usuarioActual === 'todos' || usuario === usuarioActual;
+    const pasaBusqueda = !q || search.includes(q);
+
+    card.classList.toggle('hidden', !(pasaEstado && pasaUsuario && pasaBusqueda));
+  });
+}
+
+function filtrar(tipo, btn) {
+  filtroActual = tipo;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  actualizarVista();
+}
+
+function filtrarUsuario(usuario, btn) {
+  usuarioActual = usuario;
+  document.querySelectorAll('.usuario-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  actualizarVista();
+}
+
+function buscar(q) {
+  busquedaActual = q;
+  actualizarVista();
+}
+
+// Render inicial
+const lista = document.getElementById('lista-tramites');
+lista.innerHTML = TRAMITES.map(renderTarjeta).join('');
+
+// Fix data-search después de renderizar
+document.querySelectorAll('.tramite-card').forEach((card, i) => {
+  card.dataset.search = (TRAMITES[i].nro + ' ' + TRAMITES[i].descripcion).toLowerCase();
+});
+
+actualizarVista();
+</script>
+</body>
+</html>
